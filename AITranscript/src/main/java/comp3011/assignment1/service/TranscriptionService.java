@@ -1,4 +1,4 @@
-package comp3011.assignment1;
+package comp3011.assignment1.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -8,8 +8,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
-
-import comp3011.assignment1.service.TokenUsageService;
 
 import java.io.IOException;
 import java.util.Map;
