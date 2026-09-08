@@ -1,5 +1,6 @@
 package comp3011.assignment1.dto;
 
-public class UptimeResponse {
+import java.time.Instant;
 
+public record UptimeResponse(Instant utcServerStart, Instant utcNow, double serverUptimeSeconds) {
 }
