@@ -2,6 +2,7 @@ package comp3011.assignment1.service;
 
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.routing.SystemDefaultRoutePlanner;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
@@ -13,6 +14,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.ProxySelector;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -33,6 +35,7 @@ public class TranscriptionService {
 
         var httpClient = HttpClientBuilder.create()
                 .setDefaultRequestConfig(requestConfig)
+                .setRoutePlanner(new SystemDefaultRoutePlanner(ProxySelector.getDefault()))
                 .build();
 
         var requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);

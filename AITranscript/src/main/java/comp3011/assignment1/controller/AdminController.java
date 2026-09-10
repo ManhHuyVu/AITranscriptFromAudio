@@ -53,6 +53,7 @@ public class AdminController {
             }
             SpringApplication.exit(applicationContext, () -> 0);
         });
+        shutdownThread.setDaemon(true);
         shutdownThread.start();
 
         return ResponseEntity.accepted().body(new ShutdownResponse("Graceful shutdown requested."));
