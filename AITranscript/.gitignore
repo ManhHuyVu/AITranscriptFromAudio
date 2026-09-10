@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local secrets - NEVER commit ###
+application-local.properties
+*.key
+*.pem

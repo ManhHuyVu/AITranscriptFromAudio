@@ -18,6 +18,8 @@ import java.net.ProxySelector;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import jakarta.annotation.PostConstruct;
+
 /**
  * Service responsible for sending audio files to the OpenAI Whisper API
  * and returning the text transcription.
@@ -36,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class TranscriptionService {
 
-    private final RestClient restClient;
+    private RestClient restClient;
     private final TokenUsageService tokenUsageService;
 
     /**
@@ -48,6 +50,13 @@ public class TranscriptionService {
     private String openaiApiKey;
 
     /**
+     * The base URL for the transcription API endpoint.
+     * Defaults to OpenAI's direct URL; overridden to OpenRouter in application-local.properties.
+     */
+    @Value("${OPENAI_BASE_URL:https://api.openai.com/v1/audio/transcriptions}")
+    private String openaiBaseUrl;
+
+    /**
      * Constructs the TranscriptionService and configures the RestClient with a tailored
      * Apache HttpClient.
      *
@@ -57,7 +66,16 @@ public class TranscriptionService {
      * @param tokenUsageService the shared service that accumulates token usage counters
      */
     public TranscriptionService(TokenUsageService tokenUsageService) {
+        this.tokenUsageService = tokenUsageService;
+    }
 
+    /**
+     * Initialises the RestClient after Spring has injected the @Value fields
+     * (OPENAI_API_KEY and OPENAI_BASE_URL). This is needed because @Value
+     * fields are not available in the constructor.
+     */
+    @PostConstruct
+    public void init() {
         // Timeout configuration:
         //   connectTimeout  - max time to establish a TCP connection to OpenAI (10 s).
         //   responseTimeout - max time to wait for the full response body (60 s).
@@ -83,11 +101,9 @@ public class TranscriptionService {
         var requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
 
         this.restClient = RestClient.builder()
-                .baseUrl("https://api.openai.com/v1/audio/transcriptions")
+                .baseUrl(openaiBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
-
-        this.tokenUsageService = tokenUsageService;
     }
 
     /**
