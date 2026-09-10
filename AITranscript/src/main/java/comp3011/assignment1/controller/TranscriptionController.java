@@ -28,8 +28,9 @@ public class TranscriptionController {
             return ResponseEntity.ok(new TranscriptionResponse(transcript));
         } catch (Exception e) {
             System.err.println("Transcription failed: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            String detail = e.getMessage() != null ? e.getMessage() : "Transcription request failed.";
             ErrorResponse error = new ErrorResponse(
-                    Instant.now(), 502, "Bad Gateway", "Transcription request failed.", "/api/v1/transcription"
+                    Instant.now(), 502, "Bad Gateway", detail, "/api/v1/transcription"
             );
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(error);
         }

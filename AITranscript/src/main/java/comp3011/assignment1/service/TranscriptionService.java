@@ -27,8 +27,8 @@ public class TranscriptionService {
 
     public TranscriptionService(TokenUsageService tokenUsageService) {
     	RequestConfig requestConfig = RequestConfig.custom()
-    	        .setConnectTimeout(5, TimeUnit.SECONDS)
-    	        .setResponseTimeout(15, TimeUnit.SECONDS)
+    	        .setConnectTimeout(10, TimeUnit.SECONDS)
+    	        .setResponseTimeout(60, TimeUnit.SECONDS)
     	        .build();
 
         var httpClient = HttpClientBuilder.create()
@@ -68,9 +68,17 @@ public class TranscriptionService {
                 .retrieve()
                 .body(Map.class);
 
+        Object text = response.get("text");
+
+        if (!(text instanceof String transcript) || transcript.isBlank()) {
+            throw new IllegalStateException(
+                "OpenAI response does not contain a valid transcription"
+            );
+        }
+        
         recordTokenUsage(response);
 
-        return (String) response.get("text");
+        return transcript;
     }
 
     private void recordTokenUsage(Map<String, Object> response) {
@@ -80,12 +88,19 @@ public class TranscriptionService {
             long output = extractLong(usageMap.get("output_tokens"));
             tokenUsageService.recordUsage(input, output);
         }
+        else {
+            throw new IllegalStateException(
+                    "OpenAI response does not contain usage information"
+            );
+        }
     }
 
     private long extractLong(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
         }
-        return 0L;
+        throw new IllegalStateException(
+                "Expected numeric token usage value but got: " + value
+        );
     }
 }

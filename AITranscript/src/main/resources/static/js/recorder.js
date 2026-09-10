@@ -8,17 +8,20 @@ let audioChunks = [];
 
 recordButton.addEventListener('click', async () => {
     try {
+		transcriptOutput.value = '';
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
 
-        mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-        };
-
+		mediaRecorder.ondataavailable = (event) => {
+		    if (event.data && event.data.size > 0) {
+		    	audioChunks.push(event.data);
+			}
+		};
+		
         mediaRecorder.onstop = async () => {
             stream.getTracks().forEach(track => track.stop());
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
             await sendForTranscription(audioBlob);
         };
 
@@ -32,9 +35,13 @@ recordButton.addEventListener('click', async () => {
 });
 
 stopButton.addEventListener('click', () => {
-    mediaRecorder.stop();
-    stopButton.classList.add('d-none');
-    statusText.textContent = 'Transcribing.';
+	if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+	        return;
+	    }
+
+	    stopButton.disabled = true;
+	    mediaRecorder.stop();
+	    statusText.textContent = 'Transcribing...';
 });
 
 async function sendForTranscription(audioBlob) {
@@ -47,17 +54,20 @@ async function sendForTranscription(audioBlob) {
             body: formData
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error('Server returned ' + response.status);
+            const detail = data.message || data.error || 'Server returned ' + response.status;
+            throw new Error(detail);
         }
 
-        const data = await response.json();
         transcriptOutput.value = data.transcript;
         statusText.textContent = 'Done. Ready for another recording.';
     } catch (error) {
-        statusText.textContent = 'Transcription failed. Try again.';
+        statusText.textContent = 'Transcription failed: ' + error.message;
     } finally {
         recordButton.classList.remove('d-none');
+		stopButton.disabled = false;
     }
 }
 
