@@ -18,26 +18,68 @@ import java.net.ProxySelector;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Service responsible for sending audio files to the OpenAI Whisper API
+ * and returning the text transcription.
+ *
+ * <p><b>Dependencies:</b></p>
+ * <ul>
+ *   <li>{@link org.apache.hc.client5.http.impl.classic.HttpClientBuilder} - Builds the underlying
+ *       HTTP client with proxy and timeout support.</li>
+ *   <li>{@link SystemDefaultRoutePlanner} - Routes requests through the JVM's default proxy
+ *       selector so that {@code JAVA_TOOL_OPTIONS} proxy settings (e.g. {@code -Dhttps.proxyHost})
+ *       are honoured in cloud/assessment environments like Titan.</li>
+ *   <li>{@link RestClient} - Spring's lightweight HTTP client used to POST multipart form data
+ *       to the OpenAI API.</li>
+ * </ul>
+ */
 @Service
 public class TranscriptionService {
 
     private final RestClient restClient;
     private final TokenUsageService tokenUsageService;
 
+    /**
+     * The OpenAI API key read from the {@code OPENAI_API_KEY} environment variable at runtime.
+     * Defaults to an empty string if not set; the {@link #transcribe} method validates this
+     * before making any API call.
+     */
     @Value("${OPENAI_API_KEY:}")
     private String openaiApiKey;
 
+    /**
+     * Constructs the TranscriptionService and configures the RestClient with a tailored
+     * Apache HttpClient.
+     *
+     * <p><b>Constructor injection</b> is used so Spring manages the dependency lifecycle
+     * and the class is testable (the {@link TokenUsageService} can be replaced with a mock).</p>
+     *
+     * @param tokenUsageService the shared service that accumulates token usage counters
+     */
     public TranscriptionService(TokenUsageService tokenUsageService) {
+
+        // Timeout configuration:
+        //   connectTimeout  - max time to establish a TCP connection to OpenAI (10 s).
+        //   responseTimeout - max time to wait for the full response body (60 s).
+        //     OpenAI's transcription endpoint can be slow for longer audio; the original
+        //     15 s was too short and caused "Network is unreachable" / timeout errors.
     	RequestConfig requestConfig = RequestConfig.custom()
     	        .setConnectTimeout(10, TimeUnit.SECONDS)
     	        .setResponseTimeout(60, TimeUnit.SECONDS)
     	        .build();
 
+        // SystemDefaultRoutePlanner reads the JVM-wide proxy settings from
+        // system properties (https.proxyHost, https.proxyPort, http.nonProxyHosts, etc.).
+        // This is critical in the Titan assessment environment where traffic is routed
+        // through a corporate proxy: without it, the HttpClient ignores JAVA_TOOL_OPTIONS
+        // and the connection fails with "Network is unreachable".
         var httpClient = HttpClientBuilder.create()
                 .setDefaultRequestConfig(requestConfig)
                 .setRoutePlanner(new SystemDefaultRoutePlanner(ProxySelector.getDefault()))
                 .build();
 
+        // HttpComponentsClientHttpRequestFactory bridges Apache HttpClient 5 into
+        // Spring's RestClient API so we can use Spring's fluent request building.
         var requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
 
         this.restClient = RestClient.builder()
@@ -48,11 +90,28 @@ public class TranscriptionService {
         this.tokenUsageService = tokenUsageService;
     }
 
+    /**
+     * Sends the given audio file to the OpenAI {@code /v1/audio/transcriptions} endpoint
+     * using the {@code gpt-4o-mini-transcribe} model and returns the transcribed text.
+     *
+     * <p>After a successful transcription, the OpenAI response's {@code usage} object is
+     * extracted and recorded via {@link TokenUsageService}.</p>
+     *
+     * @param audioFile the multipart audio file uploaded from the client (webm, mp3, etc.)
+     * @return the plain-text transcription produced by the model
+     * @throws IllegalStateException if the API key is missing, or the response is malformed
+     * @throws IOException if reading the file bytes fails
+     */
     public String transcribe(MultipartFile audioFile) throws IOException {
+        // Guard: refuse to call the API without a valid key.
         if (openaiApiKey == null || openaiApiKey.isBlank()) {
             throw new IllegalStateException("OPENAI_API_KEY is not set on the environment.");
         }
 
+        // ByteArrayResource wraps raw bytes as a Spring Resource.
+        // We override getFilename() so the multipart Content-Disposition header
+        // carries the original filename (e.g. "recording.webm"), which OpenAI
+        // uses to infer the audio codec when no explicit format is specified.
         ByteArrayResource fileResource = new ByteArrayResource(audioFile.getBytes()) {
             @Override
             public String getFilename() {
@@ -60,10 +119,16 @@ public class TranscriptionService {
             }
         };
 
+        // Build the multipart/form-data body that the OpenAI transcription API expects.
+        //   "file"  - the audio binary
+        //   "model" - must be "gpt-4o-mini-transcribe" per assignment spec
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", fileResource);
         body.add("model", "gpt-4o-mini-transcribe");
 
+        // POST the request with Bearer token auth.
+        // .body(Map.class) deserialises the JSON response into a raw Map;
+        // Jackson handles nested objects as Map<String, Object> automatically.
         Map<String, Object> response = restClient.post()
                 .header("Authorization", "Bearer " + openaiApiKey)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -71,19 +136,31 @@ public class TranscriptionService {
                 .retrieve()
                 .body(Map.class);
 
+        // The OpenAI transcription response contains a top-level "text" field.
         Object text = response.get("text");
 
+        // Defensive check: if the response is missing "text" or it is blank,
+        // surface a clear error rather than returning empty content to the UI.
         if (!(text instanceof String transcript) || transcript.isBlank()) {
             throw new IllegalStateException(
                 "OpenAI response does not contain a valid transcription"
             );
         }
         
+        // Record input/output token counts so the /api/v1/global/stats endpoint
+        // can report cumulative usage across all transcription requests.
         recordTokenUsage(response);
 
         return transcript;
     }
 
+    /**
+     * Extracts the {@code usage} object from the OpenAI response and delegates to
+     * {@link TokenUsageService#recordUsage(long, long)}.
+     *
+     * @param response the raw JSON response from OpenAI, parsed as a Map
+     * @throws IllegalStateException if the response lacks a {@code usage} map
+     */
     private void recordTokenUsage(Map<String, Object> response) {
         Object usage = response.get("usage");
         if (usage instanceof Map<?, ?> usageMap) {
@@ -98,6 +175,13 @@ public class TranscriptionService {
         }
     }
 
+    /**
+     * Safely converts a JSON numeric value (Integer, Long, Double) to a {@code long}.
+     *
+     * @param value the raw value from the JSON map (may be null or non-numeric)
+     * @return the value as a {@code long}
+     * @throws IllegalStateException if the value is null or not a {@link Number}
+     */
     private long extractLong(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
