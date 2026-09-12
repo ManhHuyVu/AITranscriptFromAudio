@@ -3,13 +3,14 @@ package comp3011.assignment1.dto;
 import java.time.Instant;
 
 /**
- * Standardised error response DTO returned when an API endpoint fails.
+ * Standardised error response DTO returned when an API endpoint fails
  *
- * <p>Serialised to JSON as:</p>
- * <pre>{"timestamp": "...", "status": 502, "error": "Bad Gateway", "message": "...", "path": "/api/v1/transcription"}</pre>
+ * Translate to JSON as:
+ * {"timestamp": "...", "status": 502, "error": "Bad Gateway", 
+ * "message": "...", "path": "/api/v1/transcription"}
  *
- * <p>This mirrors the default Spring Boot error format so that the frontend
- * (and Titan) can parse error details consistently.</p>
+ * This mirrors the default Spring Boot error format so that the frontend
+ * can parse error details consistently
  *
  * @param timestamp when the error occurred
  * @param status    HTTP status code (e.g. 502, 409)
