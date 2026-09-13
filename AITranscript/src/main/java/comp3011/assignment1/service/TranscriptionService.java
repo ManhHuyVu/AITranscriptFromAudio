@@ -24,16 +24,14 @@ import jakarta.annotation.PostConstruct;
  * Service responsible for sending audio files to the OpenAI Whisper API
  * and returning the text transcription.
  *
- * <p><b>Dependencies:</b></p>
- * <ul>
- *   <li>{@link org.apache.hc.client5.http.impl.classic.HttpClientBuilder} - Builds the underlying
- *       HTTP client with proxy and timeout support.</li>
- *   <li>{@link SystemDefaultRoutePlanner} - Routes requests through the JVM's default proxy
+ * Dependencies:
+ *   {@link org.apache.hc.client5.http.impl.classic.HttpClientBuilder} - Builds the underlying
+ *       HTTP client with proxy and timeout support.
+ *   {@link SystemDefaultRoutePlanner} - Routes requests through the JVM's default proxy
  *       selector so that {@code JAVA_TOOL_OPTIONS} proxy settings (e.g. {@code -Dhttps.proxyHost})
- *       are honoured in cloud/assessment environments like Titan.</li>
- *   <li>{@link RestClient} - Spring's lightweight HTTP client used to POST multipart form data
- *       to the OpenAI API.</li>
- * </ul>
+ *       are honoured in cloud/assessment environments like Titan.
+ *   {@link RestClient} - Spring's lightweight HTTP client used to POST multipart form data
+ *       to the OpenAI API.
  */
 @Service
 public class TranscriptionService {
@@ -60,8 +58,8 @@ public class TranscriptionService {
      * Constructs the TranscriptionService and configures the RestClient with a tailored
      * Apache HttpClient.
      *
-     * <p><b>Constructor injection</b> is used so Spring manages the dependency lifecycle
-     * and the class is testable (the {@link TokenUsageService} can be replaced with a mock).</p>
+     * Constructor injection: is used so Spring manages the dependency lifecycle
+     * and the class is testable (the {@link TokenUsageService} can be replaced with a mock).
      *
      * @param tokenUsageService the shared service that accumulates token usage counters
      */
@@ -71,24 +69,23 @@ public class TranscriptionService {
 
     /**
      * Initialises the RestClient after Spring has injected the @Value fields
-     * (OPENAI_API_KEY and OPENAI_BASE_URL). This is needed because @Value
-     * fields are not available in the constructor.
+     * (OPENAI_API_KEY and OPENAI_BASE_URL). This is needed because 
+     * @Value fields are not available in the constructor.
      */
     @PostConstruct
     public void init() {
         // Timeout configuration:
-        //   connectTimeout  - max time to establish a TCP connection to OpenAI (10 s).
+        //   connectTimeout - max time to establish a TCP connection to OpenAI (10 s).
         //   responseTimeout - max time to wait for the full response body (60 s).
-        //     OpenAI's transcription endpoint can be slow for longer audio; the original
-        //     15 s was too short and caused "Network is unreachable" / timeout errors.
+        //     OpenAI's transcription endpoint can be slow for longer audio; 
     	RequestConfig requestConfig = RequestConfig.custom()
     	        .setConnectTimeout(10, TimeUnit.SECONDS)
+    	    	// the original 15 s was too short and caused "Network is unreachable" / timeout errors.
     	        .setResponseTimeout(60, TimeUnit.SECONDS)
     	        .build();
 
         // SystemDefaultRoutePlanner reads the JVM-wide proxy settings from
-        // system properties (https.proxyHost, https.proxyPort, http.nonProxyHosts, etc.).
-        // This is critical in the Titan assessment environment where traffic is routed
+        // This is critical in the Titan assessment environment because traffic is routed
         // through a corporate proxy: without it, the HttpClient ignores JAVA_TOOL_OPTIONS
         // and the connection fails with "Network is unreachable".
         var httpClient = HttpClientBuilder.create()
@@ -110,8 +107,8 @@ public class TranscriptionService {
      * Sends the given audio file to the OpenAI {@code /v1/audio/transcriptions} endpoint
      * using the {@code gpt-4o-mini-transcribe} model and returns the transcribed text.
      *
-     * <p>After a successful transcription, the OpenAI response's {@code usage} object is
-     * extracted and recorded via {@link TokenUsageService}.</p>
+     * After a successful transcription, the OpenAI response's {@code usage} object is
+     * extracted and recorded via {@link TokenUsageService}.
      *
      * @param audioFile the multipart audio file uploaded from the client (webm, mp3, etc.)
      * @return the plain-text transcription produced by the model

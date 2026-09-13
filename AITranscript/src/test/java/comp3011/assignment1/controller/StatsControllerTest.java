@@ -36,13 +36,13 @@ class StatsControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    /** Mocked token usage service — controls what the controller reads. */
+    /** Mocked token usage service — controls what the controller reads */
     @MockitoBean
     private TokenUsageService tokenUsageService;
 
     /**
-     * Verifies the response contains the mocked token values.
-     * The JSON path {@code $.inputTokens} maps to the record field name.
+     * Verifies the response contains the mocked token values
+     * The JSON path {@code $.inputTokens} maps to the record field name
      */
     @Test
     void getGlobalStatsReturnsTokenUsage() throws Exception {
@@ -56,8 +56,8 @@ class StatsControllerTest {
     }
 
     /**
-     * Simulates the state before any transcription has occurred.
-     * Titan checks this endpoint before recording audio.
+     * Simulates the state before any transcription has occurred
+     * Titan checks this endpoint before recording audio
      */
     @Test
     void getGlobalStatsReturnsZerosInitially() throws Exception {
@@ -71,8 +71,8 @@ class StatsControllerTest {
     }
 
     /**
-     * Structural test: ensures both required fields exist in the JSON
-     * even when values are zero. Titan uses this to validate the response shape.
+     * Structural test: ensures both required fields exist in the JSON even when values are zero
+     * Titan uses this to validate the response shape
      */
     @Test
     void getGlobalStatsReturnsCorrectJsonStructure() throws Exception {

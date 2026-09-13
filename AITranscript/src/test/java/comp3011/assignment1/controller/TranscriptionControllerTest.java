@@ -16,21 +16,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * MockMvc slice tests for {@link TranscriptionController}.
+ * MockMvc slice tests for {@link TranscriptionController}
  *
- * <p><b>Strategy:</b> The real {@link TranscriptionService} is replaced with a
+ * Strategy:The real {@link TranscriptionService} is replaced with a
  * {@code @MockitoBean} so we never call the OpenAI API during unit tests.
- * This lets us test the controller's request handling, response formatting,
- * and error mapping in isolation.</p>
+ * This lets us test the controller's request handling, response formatting, and error mapping in isolation
  *
- * <p><b>Tests cover:</b></p>
- * <ul>
- *   <li>Successful transcription (200 OK with transcript field)</li>
- *   <li>Special characters in transcript output</li>
- *   <li>Service exceptions → 502 Bad Gateway with error details</li>
- *   <li>IOException handling</li>
- *   <li>Response structure (timestamp field in errors)</li>
- * </ul>
+ * Tests cover:
+ *   Successful transcription (200 OK with transcript field)
+ *   Special characters in transcript output
+ *   Service exceptions → 502 Bad Gateway with error details
+ *   IOException handling
+ *   Response structure (timestamp field in errors)
  */
 @WebMvcTest(TranscriptionController.class)
 class TranscriptionControllerTest {
@@ -45,9 +42,9 @@ class TranscriptionControllerTest {
     /**
      * Helper to create a dummy multipart audio file for test requests.
      *
-     * <p>Uses {@link MockMultipartFile} which implements the {@code MultipartFile}
+     * Uses {@link MockMultipartFile} which implements the {@code MultipartFile}
      * interface without needing a real file on disk. The content is arbitrary
-     * bytes — we only need the controller to accept the request.</p>
+     * bytes — we only need the controller to accept the request.
      *
      * @return a mock audio file named "recording.webm" with content type "audio/webm"
      */
@@ -87,10 +84,10 @@ class TranscriptionControllerTest {
     }
 
     /**
-     * When the OpenAI API call fails (timeout, network error, etc.), the
-     * controller returns HTTP 502 with the actual error message from the
-     * exception. This is critical for Titan diagnostics — the error message
-     * is displayed on the page so the assessment system can capture it.
+     * When the OpenAI API call fails (timeout, network error, etc.), 
+     * the controller returns HTTP 502 with the actual error message from the exception 
+     * This is critical for Titan diagnostics
+     * the error message is displayed on the page so the assessment system can capture it
      */
     @Test
     void transcribeReturns502WhenServiceThrowsException() throws Exception {
@@ -106,9 +103,8 @@ class TranscriptionControllerTest {
     }
 
     /**
-     * IOExceptions (e.g. file read errors) are also caught and returned as 502.
-     * This ensures the client always gets a structured JSON error, never a raw
-     * Spring error page.
+     * IOExceptions (e.g. file read errors) are also caught and returned as 502
+     * This ensures the client always gets a structured JSON error, never a raw Spring error page.
      */
     @Test
     void transcribeReturns502WhenIOExceptionOccurs() throws Exception {
@@ -122,7 +118,7 @@ class TranscriptionControllerTest {
 
     /**
      * Structural test: every error response must include a {@code timestamp}
-     * field so Titan can log when the failure occurred.
+     * field so Titan can log when the failure occurred
      */
     @Test
     void transcribeReturnsErrorResponseWithTimestamp() throws Exception {

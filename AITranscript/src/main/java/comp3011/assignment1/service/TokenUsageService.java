@@ -6,14 +6,14 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Thread-safe in-memory counter for cumulative OpenAI token usage.
  *
- * <p><b>Why {@link AtomicLong}?</b></p>
- * <p>With virtual threads enabled ({@code spring.threads.virtual.enabled=true}),
+ * Why {@link AtomicLong}?
+ * 
+ * With virtual threads enabled ({@code spring.threads.virtual.enabled=true}),
  * every concurrent transcription request runs on its own virtual thread and calls
  * {@link #recordUsage} concurrently. A plain {@code long} field would lose updates
- * due to data races. {@code AtomicLong.addAndGet()} provides a lock-free,
- * CAS-based atomic increment that is safe under high concurrency.</p>
+ * due to data races.
  *
- * <p>The counters are reset only when the JVM restarts (i.e. the JAR is relaunched).</p>
+ * The counters are reset only when the JVM restarts (i.e. the JAR is relaunched).
  */
 @Service
 public class TokenUsageService {

@@ -14,23 +14,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Unit tests for {@link TokenUsageService}.
  *
- * <p>These are pure unit tests — no Spring context is loaded, so they run
- * in milliseconds. The service is instantiated directly in {@link #setUp()}.</p>
+ * These are pure unit tests — no Spring context is loaded, so they run
+ * in milliseconds. The service is instantiated directly in {@link #setUp()}
  *
- * <p><b>Test categories:</b></p>
- * <ul>
- *   <li>Initial state verification</li>
- *   <li>Single and accumulated recording</li>
- *   <li>Edge cases (zero values, large values)</li>
- *   <li>Concurrent access thread-safety</li>
- * </ul>
+ * Test categories:
+ *   Initial state verification
+ *   Single and accumulated recording
+ *   Edge cases (zero values, large values)
+ *   Concurrent access thread-safety
  */
 class TokenUsageServiceTest {
 
     private TokenUsageService tokenUsageService;
 
     /**
-     * Creates a fresh service instance before each test to avoid state leakage.
+     * Creates a fresh service instance before each test to avoid state leakage
      */
     @BeforeEach
     void setUp() {
@@ -38,9 +36,9 @@ class TokenUsageServiceTest {
     }
 
     /**
-     * Verifies that both counters start at zero.
+     * Verifies that both counters start at zero
      * This is important because Titan checks the stats endpoint
-     * before any transcription occurs.
+     * before any transcription occurs
      */
     @Test
     void initialStateIsZero() {
@@ -49,7 +47,7 @@ class TokenUsageServiceTest {
     }
 
     /**
-     * Verifies that a single call to recordUsage correctly sets both counters.
+     * Verifies that a single call to recordUsage correctly sets both counters
      */
     @Test
     void recordUsageSingleCall() {
@@ -60,8 +58,8 @@ class TokenUsageServiceTest {
     }
 
     /**
-     * Verifies that multiple calls accumulate correctly.
-     * Simulates three consecutive transcription requests.
+     * Verifies that multiple calls accumulate correctly
+     * Simulates three consecutive transcription requests
      */
     @Test
     void recordUsageAccumulates() {
@@ -74,8 +72,8 @@ class TokenUsageServiceTest {
     }
 
     /**
-     * Edge case: recording zero tokens should not change the counters.
-     * This could happen if the OpenAI response somehow reported zero usage.
+     * Edge case: recording zero tokens should not change the counters
+     * This could happen if the OpenAI response somehow reported zero usage
      */
     @Test
     void recordUsageWithZeroTokens() {
@@ -86,8 +84,8 @@ class TokenUsageServiceTest {
     }
 
     /**
-     * Edge case: very large token counts that might occur with long audio files.
-     * Ensures no overflow or precision loss.
+     * Edge case: very large token counts that might occur with long audio files
+     * Ensures no overflow or precision loss
      */
     @Test
     void recordUsageWithLargeValues() {
@@ -101,23 +99,21 @@ class TokenUsageServiceTest {
     }
 
     /**
-     * Stress-tests thread safety with 10 threads each performing 100 increments.
+     * Stress-tests thread safety with 10 threads each performing 100 increments
      *
-     * <p><b>Why this matters:</b> The app uses virtual threads
+     * Why this matters: The app uses virtual threads
      * ({@code spring.threads.virtual.enabled=true}), so many transcription
      * requests can call recordUsage concurrently. If AtomicLong were replaced
-     * with a plain long, this test would fail with lost updates.</p>
+     * with a plain long, this test would fail with lost updates
      *
-     * <p><b>How it works:</b></p>
-     * <ol>
-     *   <li>A fixed thread pool of 10 threads is created.</li>
-     *   <li>A {@link CountDownLatch} synchronises the start so all threads
-     *       begin at roughly the same time (maximising contention).</li>
-     *   <li>Each thread increments both counters 100 times (1 token per call).</li>
-     *   <li>We await the latch with a 10-second timeout to prevent the test
-     *       from hanging if something goes wrong.</li>
-     *   <li>Final assertion: total = 10 threads x 100 ops = 1000.</li>
-     * </ol>
+     * How it works:
+     *   A fixed thread pool of 10 threads is created
+     *   A {@link CountDownLatch} synchronises the start 
+     *      so all threads begin at roughly the same time (maximising contention)
+     *   Each thread increments both counters 100 times (1 token per call)
+     *   We await the latch with a 10-second timeout to prevent the test
+     *       from hanging if something goes wrong
+     *   Final assertion: total = 10 threads x 100 ops = 1000
      */
     @Test
     void concurrentRecordUsage() throws InterruptedException {
